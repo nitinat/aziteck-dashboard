@@ -32,7 +32,6 @@ export type Database = {
           salary: number
           status: string
           updated_at: string
-          user_id: string
         }
         Insert: {
           address?: string
@@ -51,7 +50,6 @@ export type Database = {
           salary: number
           status?: string
           updated_at?: string
-          user_id: string
         }
         Update: {
           address?: string
@@ -70,7 +68,6 @@ export type Database = {
           salary?: number
           status?: string
           updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
