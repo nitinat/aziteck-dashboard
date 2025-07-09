@@ -29,7 +29,7 @@ export function AppSidebar() {
     <Sidebar className="border-r border-border">
       <SidebarContent>
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-foreground">HR Dashboard</h2>
+          <h2 className="text-lg font-semibold text-foreground">Aziteck</h2>
         </div>
         
         <SidebarGroup>
