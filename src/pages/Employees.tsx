@@ -25,6 +25,38 @@ const Employees = () => {
     setIsDialogOpen(true);
   };
 
+  const handleSaveEmployee = (employeeData: Partial<Employee>) => {
+    if (selectedEmployee) {
+      // Update existing employee
+      setEmployees(prev => prev.map(emp => 
+        emp.id === selectedEmployee.id 
+          ? { ...emp, ...employeeData }
+          : emp
+      ));
+    } else {
+      // Add new employee
+      const newEmployee: Employee = {
+        id: (employees.length + 1).toString(),
+        firstName: employeeData.firstName || '',
+        lastName: employeeData.lastName || '',
+        email: employeeData.email || '',
+        phone: employeeData.phone || '',
+        position: employeeData.position || '',
+        department: employeeData.department || '',
+        hireDate: new Date().toISOString().split('T')[0],
+        salary: employeeData.salary || 0,
+        address: '',
+        emergencyContact: {
+          name: '',
+          phone: '',
+          relationship: ''
+        },
+        status: 'active'
+      };
+      setEmployees(prev => [...prev, newEmployee]);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,6 +80,7 @@ const Employees = () => {
             <EmployeeForm 
               employee={selectedEmployee} 
               onClose={() => setIsDialogOpen(false)}
+              onSave={handleSaveEmployee}
             />
           </DialogContent>
         </Dialog>
@@ -106,24 +139,56 @@ const Employees = () => {
   );
 };
 
-const EmployeeForm = ({ employee, onClose }: { employee: Employee | null; onClose: () => void }) => {
+const EmployeeForm = ({ 
+  employee, 
+  onClose, 
+  onSave 
+}: { 
+  employee: Employee | null; 
+  onClose: () => void;
+  onSave: (employeeData: Partial<Employee>) => void;
+}) => {
+  const [formData, setFormData] = useState({
+    firstName: employee?.firstName || '',
+    lastName: employee?.lastName || '',
+    email: employee?.email || '',
+    phone: employee?.phone || '',
+    position: employee?.position || '',
+    department: employee?.department || '',
+    salary: employee?.salary || 0,
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+    onClose();
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
   return (
-    <form className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="firstName">First Name</Label>
           <Input 
             id="firstName" 
-            defaultValue={employee?.firstName || ''} 
+            value={formData.firstName}
+            onChange={(e) => handleInputChange('firstName', e.target.value)}
             placeholder="John"
+            required
           />
         </div>
         <div>
           <Label htmlFor="lastName">Last Name</Label>
           <Input 
             id="lastName" 
-            defaultValue={employee?.lastName || ''} 
+            value={formData.lastName}
+            onChange={(e) => handleInputChange('lastName', e.target.value)}
             placeholder="Doe"
+            required
           />
         </div>
       </div>
@@ -133,8 +198,10 @@ const EmployeeForm = ({ employee, onClose }: { employee: Employee | null; onClos
         <Input 
           id="email" 
           type="email"
-          defaultValue={employee?.email || ''} 
+          value={formData.email}
+          onChange={(e) => handleInputChange('email', e.target.value)}
           placeholder="john.doe@company.com"
+          required
         />
       </div>
       
@@ -142,8 +209,10 @@ const EmployeeForm = ({ employee, onClose }: { employee: Employee | null; onClos
         <Label htmlFor="phone">Phone</Label>
         <Input 
           id="phone" 
-          defaultValue={employee?.phone || ''} 
+          value={formData.phone}
+          onChange={(e) => handleInputChange('phone', e.target.value)}
           placeholder="+1-555-0123"
+          required
         />
       </div>
       
@@ -152,13 +221,18 @@ const EmployeeForm = ({ employee, onClose }: { employee: Employee | null; onClos
           <Label htmlFor="position">Position</Label>
           <Input 
             id="position" 
-            defaultValue={employee?.position || ''} 
+            value={formData.position}
+            onChange={(e) => handleInputChange('position', e.target.value)}
             placeholder="Software Engineer"
+            required
           />
         </div>
         <div>
           <Label htmlFor="department">Department</Label>
-          <Select defaultValue={employee?.department || ''}>
+          <Select 
+            value={formData.department} 
+            onValueChange={(value) => handleInputChange('department', value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
@@ -179,8 +253,10 @@ const EmployeeForm = ({ employee, onClose }: { employee: Employee | null; onClos
         <Input 
           id="salary" 
           type="number"
-          defaultValue={employee?.salary || ''} 
+          value={formData.salary}
+          onChange={(e) => handleInputChange('salary', parseInt(e.target.value) || 0)}
           placeholder="75000"
+          required
         />
       </div>
       
