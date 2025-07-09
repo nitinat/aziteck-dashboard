@@ -1,16 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { EmployeeCard } from '@/components/EmployeeCard';
 import { EmployeeForm } from '@/components/EmployeeForm';
-import { mockEmployees } from '@/data/mockData';
 import { Employee } from '@/types/employee';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Employees = () => {
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Fetch employees from database
+  const fetchEmployees = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to view employees",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedEmployees: Employee[] = data.map(emp => ({
+        id: emp.id,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: emp.phone,
+        position: emp.position,
+        department: emp.department,
+        hireDate: emp.hire_date,
+        salary: emp.salary,
+        address: emp.address,
+        emergencyContact: {
+          name: emp.emergency_contact_name,
+          phone: emp.emergency_contact_phone,
+          relationship: emp.emergency_contact_relationship
+        },
+        status: emp.status as 'active' | 'inactive'
+      }));
+
+      setEmployees(formattedEmployees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch employees",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   const handleAddEmployee = () => {
     setSelectedEmployee(null);
@@ -22,35 +81,108 @@ const Employees = () => {
     setIsDialogOpen(true);
   };
 
-  const handleSaveEmployee = (employeeData: Partial<Employee>) => {
-    if (selectedEmployee) {
-      // Update existing employee
-      setEmployees(prev => prev.map(emp => 
-        emp.id === selectedEmployee.id 
-          ? { ...emp, ...employeeData }
-          : emp
-      ));
-    } else {
-      // Add new employee
-      const newEmployee: Employee = {
-        id: (employees.length + 1).toString(),
-        firstName: employeeData.firstName || '',
-        lastName: employeeData.lastName || '',
-        email: employeeData.email || '',
-        phone: employeeData.phone || '',
-        position: employeeData.position || '',
-        department: employeeData.department || '',
-        hireDate: new Date().toISOString().split('T')[0],
-        salary: employeeData.salary || 0,
-        address: '',
-        emergencyContact: {
-          name: '',
-          phone: '',
-          relationship: ''
-        },
-        status: 'active'
-      };
-      setEmployees(prev => [...prev, newEmployee]);
+  const handleSaveEmployee = async (employeeData: Partial<Employee>) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please log in to save employees",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (selectedEmployee) {
+        // Update existing employee
+        const { error } = await supabase
+          .from('employees')
+          .update({
+            first_name: employeeData.firstName,
+            last_name: employeeData.lastName,
+            email: employeeData.email,
+            phone: employeeData.phone,
+            position: employeeData.position,
+            department: employeeData.department,
+            hire_date: employeeData.hireDate,
+            salary: employeeData.salary,
+            address: employeeData.address || '',
+            emergency_contact_name: employeeData.emergencyContact?.name || '',
+            emergency_contact_phone: employeeData.emergencyContact?.phone || '',
+            emergency_contact_relationship: employeeData.emergencyContact?.relationship || '',
+            status: employeeData.status || 'active'
+          })
+          .eq('id', selectedEmployee.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Employee updated successfully"
+        });
+      } else {
+        // Add new employee
+        const { error } = await supabase
+          .from('employees')
+          .insert({
+            user_id: user.id,
+            first_name: employeeData.firstName || '',
+            last_name: employeeData.lastName || '',
+            email: employeeData.email || '',
+            phone: employeeData.phone || '',
+            position: employeeData.position || '',
+            department: employeeData.department || '',
+            hire_date: employeeData.hireDate || new Date().toISOString().split('T')[0],
+            salary: employeeData.salary || 0,
+            address: employeeData.address || '',
+            emergency_contact_name: employeeData.emergencyContact?.name || '',
+            emergency_contact_phone: employeeData.emergencyContact?.phone || '',
+            emergency_contact_relationship: employeeData.emergencyContact?.relationship || '',
+            status: 'active'
+          });
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Employee added successfully"
+        });
+      }
+
+      setIsDialogOpen(false);
+      fetchEmployees(); // Refresh the list
+    } catch (error) {
+      console.error('Error saving employee:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save employee",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId: string) => {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', employeeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully"
+      });
+
+      fetchEmployees(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete employee",
+        variant: "destructive"
+      });
     }
   };
 
@@ -83,15 +215,28 @@ const Employees = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {employees.map((employee) => (
-          <EmployeeCard
-            key={employee.id}
-            employee={employee}
-            onEdit={handleEditEmployee}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Loading employees...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {employees.length === 0 ? (
+            <div className="col-span-full text-center py-8">
+              <p className="text-muted-foreground">No employees found. Add your first employee!</p>
+            </div>
+          ) : (
+            employees.map((employee) => (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                onEdit={handleEditEmployee}
+                onDelete={handleDeleteEmployee}
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };
