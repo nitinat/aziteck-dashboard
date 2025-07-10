@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AttendanceRecord, Employee } from '@/types/employee';
+import { toast } from 'sonner';
 
 const Attendance = () => {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ const Attendance = () => {
   useEffect(() => {
     if (user) {
       fetchEmployees();
+      fetchAttendanceRecords();
     }
   }, [user]);
 
@@ -62,26 +64,35 @@ const Attendance = () => {
     }
   };
 
-  const handleCheckIn = (employeeId: string) => {
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
-    
-    const newRecord: AttendanceRecord = {
-      id: Date.now().toString(),
-      employeeId,
-      date: now.toISOString().split('T')[0],
-      checkIn: timeString,
-      status: 'present'
-    };
-    
-    setAttendance([...attendance, newRecord]);
+  const fetchAttendanceRecords = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching attendance records:', error);
+        return;
+      }
+
+      const formattedRecords: AttendanceRecord[] = data.map(record => ({
+        id: record.id,
+        employeeId: record.employee_id,
+        date: record.date,
+        checkIn: record.check_in || undefined,
+        checkOut: record.check_out || undefined,
+        status: record.status as 'present' | 'late' | 'absent'
+      }));
+
+      setAttendance(formattedRecords);
+    } catch (error) {
+      console.error('Error fetching attendance records:', error);
+    }
   };
 
-  const handleCheckOut = (recordId: string) => {
+  const handleCheckIn = async (employeeId: string) => {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { 
       hour12: false, 
@@ -89,11 +100,57 @@ const Attendance = () => {
       minute: '2-digit' 
     });
     
-    setAttendance(attendance.map(record => 
-      record.id === recordId 
-        ? { ...record, checkOut: timeString }
-        : record
-    ));
+    try {
+      const { error } = await supabase
+        .from('attendance_records')
+        .insert({
+          user_id: user?.id,
+          employee_id: employeeId,
+          date: now.toISOString().split('T')[0],
+          check_in: timeString,
+          status: 'present'
+        });
+
+      if (error) {
+        console.error('Error creating attendance record:', error);
+        toast.error('Failed to check in');
+        return;
+      }
+
+      toast.success('Successfully checked in');
+      fetchAttendanceRecords();
+    } catch (error) {
+      console.error('Error creating attendance record:', error);
+      toast.error('Failed to check in');
+    }
+  };
+
+  const handleCheckOut = async (recordId: string) => {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+      hour12: false, 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    try {
+      const { error } = await supabase
+        .from('attendance_records')
+        .update({ check_out: timeString })
+        .eq('id', recordId);
+
+      if (error) {
+        console.error('Error updating attendance record:', error);
+        toast.error('Failed to check out');
+        return;
+      }
+
+      toast.success('Successfully checked out');
+      fetchAttendanceRecords();
+    } catch (error) {
+      console.error('Error updating attendance record:', error);
+      toast.error('Failed to check out');
+    }
   };
 
   const filteredAttendance = attendance.filter(record => {

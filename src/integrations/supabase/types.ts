@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_records: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          date: string
+          employee_id: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          date?: string
+          employee_id?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           address: string
@@ -69,6 +105,48 @@ export type Database = {
           position?: string
           salary?: number
           status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      work_logs: {
+        Row: {
+          created_at: string
+          date: string
+          description: string | null
+          employee_id: string
+          hours_spent: number
+          id: string
+          priority: string
+          status: string
+          task: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id: string
+          hours_spent?: number
+          id?: string
+          priority?: string
+          status?: string
+          task: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          description?: string | null
+          employee_id?: string
+          hours_spent?: number
+          id?: string
+          priority?: string
+          status?: string
+          task?: string
           updated_at?: string
           user_id?: string | null
         }

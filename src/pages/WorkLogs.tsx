@@ -11,11 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { WorkLog, Employee } from '@/types/employee';
-import { mockWorkLogs } from '@/data/mockData';
+import { toast } from 'sonner';
 
 const WorkLogs = () => {
   const { user } = useAuth();
-  const [workLogs, setWorkLogs] = useState<WorkLog[]>(mockWorkLogs);
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
@@ -24,6 +24,7 @@ const WorkLogs = () => {
   useEffect(() => {
     if (user) {
       fetchEmployees();
+      fetchWorkLogs();
     }
   }, [user]);
 
@@ -63,6 +64,36 @@ const WorkLogs = () => {
       console.error('Error fetching employees:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWorkLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('work_logs')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching work logs:', error);
+        return;
+      }
+
+      const formattedWorkLogs: WorkLog[] = data.map(log => ({
+        id: log.id,
+        employeeId: log.employee_id,
+        task: log.task,
+        description: log.description || '',
+        hoursSpent: parseFloat(log.hours_spent.toString()),
+        priority: log.priority as 'low' | 'medium' | 'high',
+        status: log.status as 'in-progress' | 'completed' | 'on-hold',
+        date: log.date
+      }));
+
+      setWorkLogs(formattedWorkLogs);
+    } catch (error) {
+      console.error('Error fetching work logs:', error);
     }
   };
 
@@ -121,7 +152,7 @@ const WorkLogs = () => {
             <DialogHeader>
               <DialogTitle>Add New Work Log</DialogTitle>
             </DialogHeader>
-            <WorkLogForm onClose={() => setIsDialogOpen(false)} employees={employees} />
+            <WorkLogForm onClose={() => setIsDialogOpen(false)} employees={employees} onSave={fetchWorkLogs} />
           </DialogContent>
         </Dialog>
       </div>
@@ -257,12 +288,62 @@ const WorkLogs = () => {
   );
 };
 
-const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: Employee[] }) => {
+const WorkLogForm = ({ onClose, employees, onSave }: { onClose: () => void; employees: Employee[]; onSave: () => void }) => {
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    employeeId: '',
+    task: '',
+    description: '',
+    hoursSpent: '',
+    priority: 'medium',
+    status: 'in-progress'
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !formData.employeeId || !formData.task || !formData.hoursSpent) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('work_logs')
+        .insert({
+          user_id: user.id,
+          employee_id: formData.employeeId,
+          task: formData.task,
+          description: formData.description,
+          hours_spent: parseFloat(formData.hoursSpent),
+          priority: formData.priority,
+          status: formData.status,
+          date: new Date().toISOString().split('T')[0]
+        });
+
+      if (error) {
+        console.error('Error creating work log:', error);
+        toast.error('Failed to create work log');
+        return;
+      }
+
+      toast.success('Work log created successfully');
+      onSave();
+      onClose();
+    } catch (error) {
+      console.error('Error creating work log:', error);
+      toast.error('Failed to create work log');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <form className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="employee">Employee</Label>
-        <Select>
+        <Label htmlFor="employee">Employee *</Label>
+        <Select value={formData.employeeId} onValueChange={(value) => setFormData({...formData, employeeId: value})}>
           <SelectTrigger>
             <SelectValue placeholder="Select employee" />
           </SelectTrigger>
@@ -277,8 +358,13 @@ const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: E
       </div>
 
       <div>
-        <Label htmlFor="task">Task Title</Label>
-        <Input id="task" placeholder="API Development" />
+        <Label htmlFor="task">Task Title *</Label>
+        <Input 
+          id="task" 
+          placeholder="API Development" 
+          value={formData.task}
+          onChange={(e) => setFormData({...formData, task: e.target.value})}
+        />
       </div>
 
       <div>
@@ -287,17 +373,26 @@ const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: E
           id="description" 
           placeholder="Describe the work performed..."
           rows={3}
+          value={formData.description}
+          onChange={(e) => setFormData({...formData, description: e.target.value})}
         />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="hours">Hours Spent</Label>
-          <Input id="hours" type="number" step="0.5" placeholder="8" />
+          <Label htmlFor="hours">Hours Spent *</Label>
+          <Input 
+            id="hours" 
+            type="number" 
+            step="0.5" 
+            placeholder="8" 
+            value={formData.hoursSpent}
+            onChange={(e) => setFormData({...formData, hoursSpent: e.target.value})}
+          />
         </div>
         <div>
           <Label htmlFor="priority">Priority</Label>
-          <Select>
+          <Select value={formData.priority} onValueChange={(value) => setFormData({...formData, priority: value})}>
             <SelectTrigger>
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
@@ -312,7 +407,7 @@ const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: E
 
       <div>
         <Label htmlFor="status">Status</Label>
-        <Select>
+        <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
           <SelectTrigger>
             <SelectValue placeholder="Select status" />
           </SelectTrigger>
@@ -325,11 +420,11 @@ const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: E
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
           Cancel
         </Button>
-        <Button type="submit">
-          Add Work Log
+        <Button type="submit" disabled={saving}>
+          {saving ? 'Adding...' : 'Add Work Log'}
         </Button>
       </div>
     </form>
