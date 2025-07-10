@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Clock, AlertCircle, CheckCircle, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,13 +8,63 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockEmployees, mockWorkLogs } from '@/data/mockData';
-import { WorkLog } from '@/types/employee';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { WorkLog, Employee } from '@/types/employee';
+import { mockWorkLogs } from '@/data/mockData';
 
 const WorkLogs = () => {
+  const { user } = useAuth();
   const [workLogs, setWorkLogs] = useState<WorkLog[]>(mockWorkLogs);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchEmployees();
+    }
+  }, [user]);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) {
+        console.error('Error fetching employees:', error);
+        return;
+      }
+
+      const formattedEmployees: Employee[] = data.map(emp => ({
+        id: emp.id,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: emp.phone,
+        position: emp.position,
+        department: emp.department,
+        hireDate: emp.hire_date,
+        salary: emp.salary,
+        address: emp.address,
+        emergencyContact: {
+          name: emp.emergency_contact_name,
+          phone: emp.emergency_contact_phone,
+          relationship: emp.emergency_contact_relationship,
+        },
+        status: emp.status as 'active' | 'inactive'
+      }));
+
+      setEmployees(formattedEmployees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredLogs = workLogs.filter(log => 
     selectedEmployee === 'all' || log.employeeId === selectedEmployee
@@ -42,6 +92,17 @@ const WorkLogs = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Work Logs</h1>
+          <p className="text-muted-foreground">Loading work logs...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -60,7 +121,7 @@ const WorkLogs = () => {
             <DialogHeader>
               <DialogTitle>Add New Work Log</DialogTitle>
             </DialogHeader>
-            <WorkLogForm onClose={() => setIsDialogOpen(false)} />
+            <WorkLogForm onClose={() => setIsDialogOpen(false)} employees={employees} />
           </DialogContent>
         </Dialog>
       </div>
@@ -129,7 +190,7 @@ const WorkLogs = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Employees</SelectItem>
-                {mockEmployees.map((employee) => (
+                {employees.map((employee) => (
                   <SelectItem key={employee.id} value={employee.id}>
                     {employee.firstName} {employee.lastName}
                   </SelectItem>
@@ -141,7 +202,7 @@ const WorkLogs = () => {
         <CardContent>
           <div className="space-y-4">
             {filteredLogs.map((log) => {
-              const employee = mockEmployees.find(e => e.id === log.employeeId);
+              const employee = employees.find(e => e.id === log.employeeId);
               return (
                 <div key={log.id} className="p-4 border rounded-lg hover:bg-accent/50 transition-colors">
                   <div className="flex items-start justify-between">
@@ -196,7 +257,7 @@ const WorkLogs = () => {
   );
 };
 
-const WorkLogForm = ({ onClose }: { onClose: () => void }) => {
+const WorkLogForm = ({ onClose, employees }: { onClose: () => void; employees: Employee[] }) => {
   return (
     <form className="space-y-4">
       <div>
@@ -206,7 +267,7 @@ const WorkLogForm = ({ onClose }: { onClose: () => void }) => {
             <SelectValue placeholder="Select employee" />
           </SelectTrigger>
           <SelectContent>
-            {mockEmployees.map((employee) => (
+            {employees.map((employee) => (
               <SelectItem key={employee.id} value={employee.id}>
                 {employee.firstName} {employee.lastName}
               </SelectItem>

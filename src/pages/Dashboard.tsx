@@ -1,13 +1,77 @@
+import { useState, useEffect } from 'react';
 import { Users, Calendar, Clock, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockEmployees, mockAttendance, mockWorkLogs } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { Employee } from '@/types/employee';
+import { mockAttendance, mockWorkLogs } from '@/data/mockData';
 
 const Dashboard = () => {
-  const totalEmployees = mockEmployees.length;
+  const { user } = useAuth();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchEmployees();
+    }
+  }, [user]);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) {
+        console.error('Error fetching employees:', error);
+        return;
+      }
+
+      const formattedEmployees: Employee[] = data.map(emp => ({
+        id: emp.id,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: emp.phone,
+        position: emp.position,
+        department: emp.department,
+        hireDate: emp.hire_date,
+        salary: emp.salary,
+        address: emp.address,
+        emergencyContact: {
+          name: emp.emergency_contact_name,
+          phone: emp.emergency_contact_phone,
+          relationship: emp.emergency_contact_relationship,
+        },
+        status: emp.status as 'active' | 'inactive'
+      }));
+
+      setEmployees(formattedEmployees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalEmployees = employees.length;
   const presentToday = mockAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
   const totalHoursToday = mockWorkLogs.reduce((sum, log) => sum + log.hoursSpent, 0);
   const activeTasks = mockWorkLogs.filter(log => log.status === 'in-progress').length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -74,7 +138,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="space-y-4">
               {mockAttendance.map((record) => {
-                const employee = mockEmployees.find(e => e.id === record.employeeId);
+                const employee = employees.find(e => e.id === record.employeeId);
                 return (
                   <div key={record.id} className="flex items-center justify-between">
                     <div>
@@ -103,7 +167,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="space-y-4">
               {mockWorkLogs.map((log) => {
-                const employee = mockEmployees.find(e => e.id === log.employeeId);
+                const employee = employees.find(e => e.id === log.employeeId);
                 return (
                   <div key={log.id} className="space-y-2">
                     <div className="flex items-center justify-between">
