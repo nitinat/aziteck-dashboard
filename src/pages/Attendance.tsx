@@ -1,17 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Clock, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { mockEmployees, mockAttendance } from '@/data/mockData';
-import { AttendanceRecord } from '@/types/employee';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { AttendanceRecord, Employee } from '@/types/employee';
 
 const Attendance = () => {
+  const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchEmployees();
+    }
+  }, [user]);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (error) {
+        console.error('Error fetching employees:', error);
+        return;
+      }
+
+      const formattedEmployees: Employee[] = data.map(emp => ({
+        id: emp.id,
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: emp.phone,
+        position: emp.position,
+        department: emp.department,
+        hireDate: emp.hire_date,
+        salary: emp.salary,
+        address: emp.address,
+        emergencyContact: {
+          name: emp.emergency_contact_name,
+          phone: emp.emergency_contact_phone,
+          relationship: emp.emergency_contact_relationship,
+        },
+        status: emp.status as 'active' | 'inactive'
+      }));
+
+      setEmployees(formattedEmployees);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCheckIn = (employeeId: string) => {
     const now = new Date();
@@ -70,8 +119,13 @@ const Attendance = () => {
           <CardTitle>Quick Check-in/out</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockEmployees.map((employee) => {
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading employees...</p>
+          ) : employees.length === 0 ? (
+            <p className="text-center text-muted-foreground">No employees found. Add employees first to manage attendance.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {employees.map((employee) => {
               const todayRecord = todayAttendance.find(r => r.employeeId === employee.id);
               const hasCheckedIn = !!todayRecord?.checkIn;
               const hasCheckedOut = !!todayRecord?.checkOut;
@@ -112,7 +166,8 @@ const Attendance = () => {
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -142,7 +197,7 @@ const Attendance = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Employees</SelectItem>
-                  {mockEmployees.map((employee) => (
+                  {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       {employee.firstName} {employee.lastName}
                     </SelectItem>
@@ -159,7 +214,7 @@ const Attendance = () => {
                 </p>
               ) : (
                 filteredAttendance.map((record) => {
-                  const employee = mockEmployees.find(e => e.id === record.employeeId);
+                  const employee = employees.find(e => e.id === record.employeeId);
                   return (
                     <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-4">
