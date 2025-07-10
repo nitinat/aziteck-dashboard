@@ -4,17 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Employee } from '@/types/employee';
-import { mockAttendance, mockWorkLogs } from '@/data/mockData';
+import { Employee, AttendanceRecord, WorkLog } from '@/types/employee';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
-      fetchEmployees();
+      Promise.all([
+        fetchEmployees(),
+        fetchTodayAttendance(),
+        fetchRecentWorkLogs()
+      ]).finally(() => setLoading(false));
     }
   }, [user]);
 
@@ -52,15 +57,75 @@ const Dashboard = () => {
       setEmployees(formattedEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const fetchTodayAttendance = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('attendance_records')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('date', today);
+
+      if (error) {
+        console.error('Error fetching attendance:', error);
+        return;
+      }
+
+      const formattedRecords: AttendanceRecord[] = data.map(record => ({
+        id: record.id,
+        employeeId: record.employee_id,
+        date: record.date,
+        checkIn: record.check_in || undefined,
+        checkOut: record.check_out || undefined,
+        status: record.status as 'present' | 'late' | 'absent'
+      }));
+
+      setAttendance(formattedRecords);
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+    }
+  };
+
+  const fetchRecentWorkLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('work_logs')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('Error fetching work logs:', error);
+        return;
+      }
+
+      const formattedWorkLogs: WorkLog[] = data.map(log => ({
+        id: log.id,
+        employeeId: log.employee_id,
+        task: log.task,
+        description: log.description || '',
+        hoursSpent: parseFloat(log.hours_spent.toString()),
+        priority: log.priority as 'low' | 'medium' | 'high',
+        status: log.status as 'in-progress' | 'completed' | 'on-hold',
+        date: log.date
+      }));
+
+      setWorkLogs(formattedWorkLogs);
+    } catch (error) {
+      console.error('Error fetching work logs:', error);
     }
   };
 
   const totalEmployees = employees.length;
-  const presentToday = mockAttendance.filter(a => a.status === 'present' || a.status === 'late').length;
-  const totalHoursToday = mockWorkLogs.reduce((sum, log) => sum + log.hoursSpent, 0);
-  const activeTasks = mockWorkLogs.filter(log => log.status === 'in-progress').length;
+  const presentToday = attendance.filter(a => a.status === 'present' || a.status === 'late').length;
+  const totalHoursToday = workLogs
+    .filter(log => log.date === new Date().toISOString().split('T')[0])
+    .reduce((sum, log) => sum + log.hoursSpent, 0);
+  const activeTasks = workLogs.filter(log => log.status === 'in-progress').length;
 
   if (loading) {
     return (
@@ -137,25 +202,29 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockAttendance.map((record) => {
-                const employee = employees.find(e => e.id === record.employeeId);
-                return (
-                  <div key={record.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {record.checkIn} - {record.checkOut || 'Not checked out'}
-                      </p>
+              {attendance.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No attendance records for today</p>
+              ) : (
+                attendance.map((record) => {
+                  const employee = employees.find(e => e.id === record.employeeId);
+                  return (
+                    <div key={record.id} className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {record.checkIn || 'Not checked in'} - {record.checkOut || 'Not checked out'}
+                        </p>
+                      </div>
+                      <Badge 
+                        variant={record.status === 'present' ? 'default' : 
+                                 record.status === 'late' ? 'secondary' : 'destructive'}
+                      >
+                        {record.status}
+                      </Badge>
                     </div>
-                    <Badge 
-                      variant={record.status === 'present' ? 'default' : 
-                               record.status === 'late' ? 'secondary' : 'destructive'}
-                    >
-                      {record.status}
-                    </Badge>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
@@ -166,26 +235,30 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockWorkLogs.map((log) => {
-                const employee = employees.find(e => e.id === log.employeeId);
-                return (
-                  <div key={log.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{log.task}</p>
-                      <Badge 
-                        variant={log.priority === 'high' ? 'destructive' : 
-                                log.priority === 'medium' ? 'secondary' : 'outline'}
-                      >
-                        {log.priority}
-                      </Badge>
+              {workLogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No recent work logs</p>
+              ) : (
+                workLogs.map((log) => {
+                  const employee = employees.find(e => e.id === log.employeeId);
+                  return (
+                    <div key={log.id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium">{log.task}</p>
+                        <Badge 
+                          variant={log.priority === 'high' ? 'destructive' : 
+                                  log.priority === 'medium' ? 'secondary' : 'outline'}
+                        >
+                          {log.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {employee?.firstName} {employee?.lastName} • {log.hoursSpent}h
+                      </p>
+                      <p className="text-sm">{log.description}</p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {employee?.firstName} {employee?.lastName} • {log.hoursSpent}h
-                    </p>
-                    <p className="text-sm">{log.description}</p>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </CardContent>
         </Card>
