@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +7,123 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Building2, User, Bell, Shield, Palette, Download } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+
+interface UserSettings {
+  company_name: string;
+  company_email: string;
+  company_address: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  email_notifications: boolean;
+  attendance_alerts: boolean;
+  task_reminders: boolean;
+  weekly_reports: boolean;
+  dark_mode: boolean;
+  theme_color: string;
+}
 
 export default function Settings() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [settings, setSettings] = useState<UserSettings>({
+    company_name: '',
+    company_email: '',
+    company_address: '',
+    first_name: '',
+    last_name: '',
+    email: '',
+    role: '',
+    email_notifications: true,
+    attendance_alerts: true,
+    task_reminders: false,
+    weekly_reports: true,
+    dark_mode: false,
+    theme_color: 'primary'
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.id) {
+      loadSettings();
+    }
+  }, [user?.id]);
+
+  const loadSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setSettings({
+          company_name: data.company_name || '',
+          company_email: data.company_email || '',
+          company_address: data.company_address || '',
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          email: data.email || '',
+          role: data.role || '',
+          email_notifications: data.email_notifications,
+          attendance_alerts: data.attendance_alerts,
+          task_reminders: data.task_reminders,
+          weekly_reports: data.weekly_reports,
+          dark_mode: data.dark_mode,
+          theme_color: data.theme_color || 'primary'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load settings",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const saveSettings = async (section: string) => {
+    if (!user?.id) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: user.id,
+          ...settings
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `${section} settings saved successfully`
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save settings",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSetting = (key: keyof UserSettings, value: string | boolean) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,18 +147,36 @@ export default function Settings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="company-name">Company Name</Label>
-                <Input id="company-name" defaultValue="Aziteck" />
+                <Input 
+                  id="company-name" 
+                  value={settings.company_name}
+                  onChange={(e) => updateSetting('company_name', e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="company-email">Company Email</Label>
-                <Input id="company-email" type="email" defaultValue="hr@aziteck.com" />
+                <Input 
+                  id="company-email" 
+                  type="email" 
+                  value={settings.company_email}
+                  onChange={(e) => updateSetting('company_email', e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="company-address">Company Address</Label>
-              <Input id="company-address" defaultValue="123 Business District, Tech City" />
+              <Input 
+                id="company-address" 
+                value={settings.company_address}
+                onChange={(e) => updateSetting('company_address', e.target.value)}
+              />
             </div>
-            <Button>Save Company Settings</Button>
+            <Button 
+              onClick={() => saveSettings('Company')}
+              disabled={loading}
+            >
+              Save Company Settings
+            </Button>
           </CardContent>
         </Card>
 
@@ -61,25 +195,47 @@ export default function Settings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="first-name">First Name</Label>
-                <Input id="first-name" defaultValue="Admin" />
+                <Input 
+                  id="first-name" 
+                  value={settings.first_name}
+                  onChange={(e) => updateSetting('first_name', e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="last-name">Last Name</Label>
-                <Input id="last-name" defaultValue="User" />
+                <Input 
+                  id="last-name" 
+                  value={settings.last_name}
+                  onChange={(e) => updateSetting('last_name', e.target.value)}
+                />
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" defaultValue="admin@aziteck.com" />
+              <Input 
+                id="email" 
+                type="email" 
+                value={settings.email}
+                onChange={(e) => updateSetting('email', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="role">Role</Label>
               <div className="flex items-center gap-2">
-                <Input id="role" defaultValue="HR Manager" disabled />
+                <Input 
+                  id="role" 
+                  value={settings.role}
+                  onChange={(e) => updateSetting('role', e.target.value)}
+                />
                 <Badge variant="secondary">Admin</Badge>
               </div>
             </div>
-            <Button>Update Profile</Button>
+            <Button 
+              onClick={() => saveSettings('Profile')}
+              disabled={loading}
+            >
+              Update Profile
+            </Button>
           </CardContent>
         </Card>
 
@@ -100,7 +256,13 @@ export default function Settings() {
                 <Label>Email Notifications</Label>
                 <p className="text-sm text-muted-foreground">Receive notifications via email</p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.email_notifications}
+                onCheckedChange={(checked) => {
+                  updateSetting('email_notifications', checked);
+                  saveSettings('Notification');
+                }}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -108,7 +270,13 @@ export default function Settings() {
                 <Label>Attendance Alerts</Label>
                 <p className="text-sm text-muted-foreground">Get notified about attendance issues</p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.attendance_alerts}
+                onCheckedChange={(checked) => {
+                  updateSetting('attendance_alerts', checked);
+                  saveSettings('Notification');
+                }}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -116,7 +284,13 @@ export default function Settings() {
                 <Label>Task Reminders</Label>
                 <p className="text-sm text-muted-foreground">Receive reminders for pending tasks</p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.task_reminders}
+                onCheckedChange={(checked) => {
+                  updateSetting('task_reminders', checked);
+                  saveSettings('Notification');
+                }}
+              />
             </div>
             <Separator />
             <div className="flex items-center justify-between">
@@ -124,7 +298,13 @@ export default function Settings() {
                 <Label>Weekly Reports</Label>
                 <p className="text-sm text-muted-foreground">Get weekly performance reports</p>
               </div>
-              <Switch defaultChecked />
+              <Switch 
+                checked={settings.weekly_reports}
+                onCheckedChange={(checked) => {
+                  updateSetting('weekly_reports', checked);
+                  saveSettings('Notification');
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -178,7 +358,13 @@ export default function Settings() {
                 <Label>Dark Mode</Label>
                 <p className="text-sm text-muted-foreground">Toggle dark mode theme</p>
               </div>
-              <Switch />
+              <Switch 
+                checked={settings.dark_mode}
+                onCheckedChange={(checked) => {
+                  updateSetting('dark_mode', checked);
+                  saveSettings('Appearance');
+                }}
+              />
             </div>
             <Separator />
             <div className="space-y-2">

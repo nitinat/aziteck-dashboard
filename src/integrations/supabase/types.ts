@@ -110,6 +110,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          attendance_alerts: boolean | null
+          company_address: string | null
+          company_email: string | null
+          company_name: string | null
+          created_at: string
+          dark_mode: boolean | null
+          email: string | null
+          email_notifications: boolean | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          role: string | null
+          task_reminders: boolean | null
+          theme_color: string | null
+          updated_at: string
+          user_id: string
+          weekly_reports: boolean | null
+        }
+        Insert: {
+          attendance_alerts?: boolean | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          dark_mode?: boolean | null
+          email?: string | null
+          email_notifications?: boolean | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          role?: string | null
+          task_reminders?: boolean | null
+          theme_color?: string | null
+          updated_at?: string
+          user_id: string
+          weekly_reports?: boolean | null
+        }
+        Update: {
+          attendance_alerts?: boolean | null
+          company_address?: string | null
+          company_email?: string | null
+          company_name?: string | null
+          created_at?: string
+          dark_mode?: boolean | null
+          email?: string | null
+          email_notifications?: boolean | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          role?: string | null
+          task_reminders?: boolean | null
+          theme_color?: string | null
+          updated_at?: string
+          user_id?: string
+          weekly_reports?: boolean | null
+        }
+        Relationships: []
+      }
       work_logs: {
         Row: {
           created_at: string
