@@ -155,8 +155,8 @@ const Attendance = () => {
 
   const filteredAttendance = attendance.filter(record => {
     const matchesEmployee = selectedEmployee === 'all' || record.employeeId === selectedEmployee;
-    const matchesDate = record.date === selectedDate.toISOString().split('T')[0];
-    return matchesEmployee && matchesDate;
+    // Show all historical data - don't filter by date unless specifically needed
+    return matchesEmployee;
   });
 
   const todayAttendance = attendance.filter(record => 
