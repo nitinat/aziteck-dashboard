@@ -1,4 +1,4 @@
-import { Users, Calendar, ClipboardList, BarChart3, Settings } from 'lucide-react';
+import { Users, Calendar, ClipboardList, BarChart3, Settings, Bell } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -16,6 +16,7 @@ const items = [
   { title: 'Employees', url: '/employees', icon: Users },
   { title: 'Attendance', url: '/attendance', icon: Calendar },
   { title: 'Work Logs', url: '/work-logs', icon: ClipboardList },
+  { title: 'Important Notifications', url: '/notifications', icon: Bell },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
