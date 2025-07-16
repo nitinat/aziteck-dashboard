@@ -270,16 +270,20 @@ const Attendance = () => {
                   No attendance records found for the selected date and employee.
                 </p>
               ) : (
-                filteredAttendance.map((record) => {
-                  const employee = employees.find(e => e.id === record.employeeId);
-                  return (
-                    <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
-                          <p className="text-sm text-muted-foreground">{employee?.department}</p>
+                  filteredAttendance.map((record) => {
+                    const employee = employees.find(e => e.id === record.employeeId);
+                    return (
+                      <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
+                            <p className="text-sm text-muted-foreground">{employee?.department}</p>
+                            <p className="text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3 inline mr-1" />
+                              {new Date(record.date).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <div className="flex items-center gap-2 text-sm">
