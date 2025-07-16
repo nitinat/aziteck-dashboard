@@ -7,8 +7,10 @@ export interface Employee {
   position: string;
   department: string;
   hireDate: string;
-  salary: number;
   address: string;
+  educationDegree: string;
+  branch: string;
+  skills: string;
   emergencyContact: {
     name: string;
     phone: string;

@@ -49,8 +49,10 @@ const WorkLogs = () => {
         position: emp.position,
         department: emp.department,
         hireDate: emp.hire_date,
-        salary: emp.salary,
         address: emp.address,
+        educationDegree: emp.education_degree || '',
+        branch: emp.branch || '',
+        skills: emp.skills || '',
         emergencyContact: {
           name: emp.emergency_contact_name,
           phone: emp.emergency_contact_phone,

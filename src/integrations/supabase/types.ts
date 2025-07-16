@@ -53,8 +53,10 @@ export type Database = {
       employees: {
         Row: {
           address: string
+          branch: string | null
           created_at: string
           department: string
+          education_degree: string | null
           email: string
           emergency_contact_name: string
           emergency_contact_phone: string
@@ -66,14 +68,17 @@ export type Database = {
           phone: string
           position: string
           salary: number
+          skills: string | null
           status: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
           address?: string
+          branch?: string | null
           created_at?: string
           department: string
+          education_degree?: string | null
           email: string
           emergency_contact_name?: string
           emergency_contact_phone?: string
@@ -85,14 +90,17 @@ export type Database = {
           phone: string
           position: string
           salary: number
+          skills?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           address?: string
+          branch?: string | null
           created_at?: string
           department?: string
+          education_degree?: string | null
           email?: string
           emergency_contact_name?: string
           emergency_contact_phone?: string
@@ -104,6 +112,7 @@ export type Database = {
           phone?: string
           position?: string
           salary?: number
+          skills?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null

@@ -24,7 +24,10 @@ export const EmployeeForm = ({ employee, onClose, onSave }: EmployeeFormProps) =
     phone: employee?.phone || '',
     position: employee?.position || '',
     department: employee?.department || '',
-    salary: employee?.salary || 0,
+    address: employee?.address || '',
+    educationDegree: employee?.educationDegree || '',
+    branch: employee?.branch || '',
+    skills: employee?.skills || '',
     hireDate: employee?.hireDate || '',
   });
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -133,13 +136,55 @@ export const EmployeeForm = ({ employee, onClose, onSave }: EmployeeFormProps) =
       </div>
       
       <div>
-        <Label htmlFor="salary">Salary</Label>
+        <Label htmlFor="address">Address</Label>
         <Input 
-          id="salary" 
-          type="number"
-          value={formData.salary}
-          onChange={(e) => handleInputChange('salary', parseInt(e.target.value) || 0)}
-          placeholder="75000"
+          id="address" 
+          value={formData.address}
+          onChange={(e) => handleInputChange('address', e.target.value)}
+          placeholder="123 Main Street, City, State, Country"
+          required
+        />
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="educationDegree">Education Degree</Label>
+          <Select 
+            value={formData.educationDegree} 
+            onValueChange={(value) => handleInputChange('educationDegree', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select degree" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="High School">High School</SelectItem>
+              <SelectItem value="Associate Degree">Associate Degree</SelectItem>
+              <SelectItem value="Bachelor's Degree">Bachelor's Degree</SelectItem>
+              <SelectItem value="Master's Degree">Master's Degree</SelectItem>
+              <SelectItem value="PhD">PhD</SelectItem>
+              <SelectItem value="Professional Certification">Professional Certification</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="branch">Branch/Field</Label>
+          <Input 
+            id="branch" 
+            value={formData.branch}
+            onChange={(e) => handleInputChange('branch', e.target.value)}
+            placeholder="Computer Science, Engineering, etc."
+            required
+          />
+        </div>
+      </div>
+      
+      <div>
+        <Label htmlFor="skills">Skills</Label>
+        <Input 
+          id="skills" 
+          value={formData.skills}
+          onChange={(e) => handleInputChange('skills', e.target.value)}
+          placeholder="JavaScript, React, Node.js, etc."
           required
         />
       </div>
