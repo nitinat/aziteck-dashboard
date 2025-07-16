@@ -114,12 +114,19 @@ export const EmployeeForm = ({ employee, onClose, onSave }: EmployeeFormProps) =
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Engineering">Engineering</SelectItem>
-              <SelectItem value="Product">Product</SelectItem>
-              <SelectItem value="Design">Design</SelectItem>
-              <SelectItem value="Marketing">Marketing</SelectItem>
-              <SelectItem value="Sales">Sales</SelectItem>
-              <SelectItem value="HR">HR</SelectItem>
+              <SelectItem value="Software Development">Software Development</SelectItem>
+              <SelectItem value="AI & Data Science">AI & Data Science</SelectItem>
+              <SelectItem value="Quality Analysis">Quality Analysis</SelectItem>
+              <SelectItem value="Automation">Automation</SelectItem>
+              <SelectItem value="Product Development">Product Development</SelectItem>
+              <SelectItem value="Design (UX/UI)">Design (UX/UI)</SelectItem>
+              <SelectItem value="Product Management">Product Management</SelectItem>
+              <SelectItem value="Content Engineering">Content Engineering</SelectItem>
+              <SelectItem value="Sales & Marketing">Sales & Marketing</SelectItem>
+              <SelectItem value="Customer Success & Support">Customer Success & Support</SelectItem>
+              <SelectItem value="People & Operations">People & Operations</SelectItem>
+              <SelectItem value="Strategy & Innovation Office">Strategy & Innovation Office</SelectItem>
+              <SelectItem value="Innovation Labs">Innovation Labs</SelectItem>
             </SelectContent>
           </Select>
         </div>
