@@ -152,6 +152,42 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          category: string
+          created_at: string
+          employee_id: string
+          file_paths: string[] | null
+          id: string
+          tag: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          employee_id: string
+          file_paths?: string[] | null
+          id?: string
+          tag: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          employee_id?: string
+          file_paths?: string[] | null
+          id?: string
+          tag?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           attendance_alerts: boolean | null
