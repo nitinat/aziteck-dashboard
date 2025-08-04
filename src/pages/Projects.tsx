@@ -63,6 +63,7 @@ const Projects = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched projects:', data); // Debug log
       setProjects((data as any) || []);
     } catch (error) {
       console.error('Error fetching projects:', error);
