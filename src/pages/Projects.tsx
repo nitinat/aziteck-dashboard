@@ -411,24 +411,31 @@ const Projects = () => {
                     }
                   </TableCell>
                   <TableCell>
-                    {project.file_paths && project.file_paths.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {project.file_paths.map((filePath, fileIndex) => (
-                          <Button
-                            key={fileIndex}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDownload(filePath)}
-                            className="h-6 px-2 text-xs"
-                          >
-                            <Download className="h-3 w-3 mr-1" />
-                            {filePath.split('/').pop()?.split('-').slice(1).join('-') || 'File'}
-                          </Button>
-                        ))}
-                      </div>
-                    ) : (
-                      'No files'
-                    )}
+                    {(() => {
+                      console.log('Project file_paths:', project.file_paths, 'Type:', typeof project.file_paths);
+                      console.log('Array check:', Array.isArray(project.file_paths));
+                      return project.file_paths && project.file_paths.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {project.file_paths.map((filePath, fileIndex) => {
+                            console.log('Rendering file:', filePath, 'Index:', fileIndex);
+                            return (
+                              <Button
+                                key={fileIndex}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownload(filePath)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                {filePath.split('/').pop()?.split('-').slice(1).join('-') || 'File'}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span>No files</span>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>
                     {new Date(project.created_at).toLocaleDateString()}
