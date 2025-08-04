@@ -347,7 +347,7 @@ const Projects = () => {
 
               <div>
                 <label htmlFor="file-upload" className="block text-sm font-medium mb-1">
-                  Upload Files
+                  Upload Files (Multiple files supported)
                 </label>
                 <Input
                   id="file-upload"
@@ -355,7 +355,11 @@ const Projects = () => {
                   multiple
                   accept="*/*"
                   className="cursor-pointer"
+                  placeholder="Select multiple files..."
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  You can select multiple files including documents, images, videos, etc.
+                </p>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
