@@ -1,0 +1,5 @@
+---
+deployment:
+ tasks:
+   - export DEPLOYPATH=/home/azitjsps/public_html/
+   - /bin/cp -r * $DEPLOYPATH
