@@ -1,5 +1,7 @@
 ---
 deployment:
  tasks:
-   - export DEPLOYPATH=/home/azitjsps/public_html/
-   - /bin/cp -r * $DEPLOYPATH
+   - export DEPLOYPATH=/home/username/public_html/
+   - npm install
+   - npm run build
+   - /bin/rsync -av --delete dist/ $DEPLOYPATH
