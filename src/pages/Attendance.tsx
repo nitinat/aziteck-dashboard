@@ -916,8 +916,8 @@ const Attendance = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <Card>
+              <div className="flex flex-col xl:flex-row gap-6">
+                <Card className="xl:w-80 flex-shrink-0">
                   <CardHeader>
                     <CardTitle>Calendar View</CardTitle>
                   </CardHeader>
@@ -937,7 +937,7 @@ const Attendance = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-3">
+                <Card className="flex-1">
                   <CardHeader>
                     <CardTitle>Holiday List</CardTitle>
                   </CardHeader>
