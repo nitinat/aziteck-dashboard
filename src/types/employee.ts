@@ -26,6 +26,7 @@ export interface AttendanceRecord {
   checkIn?: string;
   checkOut?: string;
   status: 'present' | 'absent' | 'late' | 'half-day';
+  workLocation?: 'WFO' | 'WFH';
   notes?: string;
 }
 

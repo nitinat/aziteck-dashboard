@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, XCircle, Building, Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ const Attendance = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedWorkLocation, setSelectedWorkLocation] = useState<{[key: string]: 'WFO' | 'WFH'}>({});
 
   useEffect(() => {
     if (user) {
@@ -85,7 +86,8 @@ const Attendance = () => {
         date: record.date,
         checkIn: record.check_in || undefined,
         checkOut: record.check_out || undefined,
-        status: record.status as 'present' | 'late' | 'absent'
+        status: record.status as 'present' | 'late' | 'absent',
+        workLocation: record.work_location as 'WFO' | 'WFH' || 'WFO'
       }));
 
       setAttendance(formattedRecords);
@@ -94,7 +96,7 @@ const Attendance = () => {
     }
   };
 
-  const handleCheckIn = async (employeeId: string) => {
+  const handleCheckIn = async (employeeId: string, workLocation: 'WFO' | 'WFH' = 'WFO') => {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { 
       hour12: false, 
@@ -110,6 +112,7 @@ const Attendance = () => {
           employee_id: employeeId,
           date: now.toISOString().split('T')[0],
           check_in: timeString,
+          work_location: workLocation,
           status: 'present'
         });
 
@@ -119,8 +122,13 @@ const Attendance = () => {
         return;
       }
 
-      toast.success('Successfully checked in');
+      toast.success(`Successfully checked in (${workLocation})`);
       fetchAttendanceRecords();
+      // Reset the selected work location for this employee
+      setSelectedWorkLocation(prev => ({
+        ...prev,
+        [employeeId]: 'WFO'
+      }));
     } catch (error) {
       console.error('Error creating attendance record:', error);
       toast.error('Failed to check in');
@@ -190,25 +198,67 @@ const Attendance = () => {
               const hasCheckedOut = !!todayRecord?.checkOut;
 
               return (
-                <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{employee.firstName} {employee.lastName}</p>
-                    <p className="text-sm text-muted-foreground">{employee.position}</p>
-                    {todayRecord && (
-                      <p className="text-xs text-muted-foreground">
-                        In: {todayRecord.checkIn} {todayRecord.checkOut && `• Out: ${todayRecord.checkOut}`}
-                      </p>
-                    )}
+                <div key={employee.id} className="flex flex-col p-4 border rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{employee.firstName} {employee.lastName}</p>
+                      <p className="text-sm text-muted-foreground">{employee.position}</p>
+                      {todayRecord && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>In: {todayRecord.checkIn}</span>
+                          {todayRecord.checkOut && <span>• Out: {todayRecord.checkOut}</span>}
+                          {todayRecord.workLocation && (
+                            <Badge variant="outline" className="text-xs">
+                              {todayRecord.workLocation === 'WFO' ? (
+                                <><Building className="h-3 w-3 mr-1" />WFO</>
+                              ) : (
+                                <><Home className="h-3 w-3 mr-1" />WFH</>
+                              )}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+                  
+                  <div className="flex items-center justify-between">
                     {!hasCheckedIn ? (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleCheckIn(employee.id)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Check In
-                      </Button>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select
+                          value={selectedWorkLocation[employee.id] || 'WFO'}
+                          onValueChange={(value: 'WFO' | 'WFH') =>
+                            setSelectedWorkLocation(prev => ({
+                              ...prev,
+                              [employee.id]: value
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="w-24 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="WFO">
+                              <div className="flex items-center gap-1">
+                                <Building className="h-3 w-3" />
+                                WFO
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="WFH">
+                              <div className="flex items-center gap-1">
+                                <Home className="h-3 w-3" />
+                                WFH
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleCheckIn(employee.id, selectedWorkLocation[employee.id] || 'WFO')}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Check In
+                        </Button>
+                      </div>
                     ) : !hasCheckedOut ? (
                       <Button 
                         size="sm" 
@@ -275,17 +325,28 @@ const Attendance = () => {
                   filteredAttendance.map((record) => {
                     const employee = employees.find(e => e.id === record.employeeId);
                     return (
-                      <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
-                            <p className="text-sm text-muted-foreground">{employee?.department}</p>
-                            <p className="text-xs text-muted-foreground">
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              {new Date(record.date).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
+                       <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
+                         <div className="flex items-center gap-4">
+                           <div>
+                             <p className="font-medium">{employee?.firstName} {employee?.lastName}</p>
+                             <p className="text-sm text-muted-foreground">{employee?.department}</p>
+                             <div className="flex items-center gap-2">
+                               <p className="text-xs text-muted-foreground">
+                                 <Calendar className="h-3 w-3 inline mr-1" />
+                                 {new Date(record.date).toLocaleDateString()}
+                               </p>
+                               {record.workLocation && (
+                                 <Badge variant="outline" className="text-xs">
+                                   {record.workLocation === 'WFO' ? (
+                                     <><Building className="h-3 w-3 mr-1" />WFO</>
+                                   ) : (
+                                     <><Home className="h-3 w-3 mr-1" />WFH</>
+                                   )}
+                                 </Badge>
+                               )}
+                             </div>
+                           </div>
+                         </div>
                       <div className="flex items-center gap-4">
                         <div className="text-right">
                           <div className="flex items-center gap-2 text-sm">
