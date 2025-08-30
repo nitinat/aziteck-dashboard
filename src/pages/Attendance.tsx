@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle, Building, Home, Plus, CalendarDays, FileText } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, XCircle, Building, Home, Plus, CalendarDays, FileText, Star, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +12,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { AttendanceRecord, Employee, LeaveRequest } from '@/types/employee';
+import { AttendanceRecord, Employee, LeaveRequest, Holiday } from '@/types/employee';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Switch } from '@/components/ui/switch';
 
 // Leave form validation schema
 const leaveFormSchema = z.object({
@@ -30,6 +31,15 @@ const leaveFormSchema = z.object({
   path: ["endDate"],
 });
 
+// Holiday form validation schema
+const holidayFormSchema = z.object({
+  title: z.string().min(1, "Please provide a holiday title"),
+  date: z.date(),
+  description: z.string().optional(),
+  type: z.enum(['company', 'national', 'religious']),
+  isRecurring: z.boolean().default(false),
+});
+
 const Attendance = () => {
   const { user } = useAuth();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -37,9 +47,11 @@ const Attendance = () => {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWorkLocation, setSelectedWorkLocation] = useState<{[key: string]: 'WFO' | 'WFH'}>({});
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
 
   // Initialize leave form
   const leaveForm = useForm<z.infer<typeof leaveFormSchema>>({
@@ -51,11 +63,23 @@ const Attendance = () => {
     },
   });
 
+  // Initialize holiday form
+  const holidayForm = useForm<z.infer<typeof holidayFormSchema>>({
+    resolver: zodResolver(holidayFormSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      type: 'company',
+      isRecurring: false,
+    },
+  });
+
   useEffect(() => {
     if (user) {
       fetchEmployees();
       fetchAttendanceRecords();
       fetchLeaveRequests();
+      fetchHolidays();
     }
   }, [user]);
 
@@ -161,6 +185,35 @@ const Attendance = () => {
     }
   };
 
+  const fetchHolidays = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('holidays')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('date', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching holidays:', error);
+        return;
+      }
+
+      const formattedHolidays: Holiday[] = data.map(holiday => ({
+        id: holiday.id,
+        title: holiday.title,
+        date: holiday.date,
+        description: holiday.description || undefined,
+        type: holiday.type as 'company' | 'national' | 'religious',
+        isRecurring: holiday.is_recurring,
+        createdAt: holiday.created_at,
+      }));
+
+      setHolidays(formattedHolidays);
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
+    }
+  };
+
   const handleCheckIn = async (employeeId: string, workLocation: 'WFO' | 'WFH' = 'WFO') => {
     const now = new Date();
     const timeString = now.toLocaleTimeString('en-US', { 
@@ -258,6 +311,56 @@ const Attendance = () => {
     }
   };
 
+  const handleHolidaySubmit = async (values: z.infer<typeof holidayFormSchema>) => {
+    try {
+      const { error } = await supabase
+        .from('holidays')
+        .insert({
+          user_id: user?.id,
+          title: values.title,
+          date: values.date.toISOString().split('T')[0],
+          description: values.description || null,
+          type: values.type,
+          is_recurring: values.isRecurring
+        });
+
+      if (error) {
+        console.error('Error creating holiday:', error);
+        toast.error('Failed to add holiday');
+        return;
+      }
+
+      toast.success('Holiday added successfully');
+      setIsHolidayDialogOpen(false);
+      holidayForm.reset();
+      fetchHolidays();
+    } catch (error) {
+      console.error('Error creating holiday:', error);
+      toast.error('Failed to add holiday');
+    }
+  };
+
+  const handleDeleteHoliday = async (holidayId: string) => {
+    try {
+      const { error } = await supabase
+        .from('holidays')
+        .delete()
+        .eq('id', holidayId);
+
+      if (error) {
+        console.error('Error deleting holiday:', error);
+        toast.error('Failed to delete holiday');
+        return;
+      }
+
+      toast.success('Holiday deleted successfully');
+      fetchHolidays();
+    } catch (error) {
+      console.error('Error deleting holiday:', error);
+      toast.error('Failed to delete holiday');
+    }
+  };
+
   const filteredAttendance = attendance.filter(record => {
     const matchesEmployee = selectedEmployee === 'all' || record.employeeId === selectedEmployee;
     // Show all historical data - don't filter by date unless specifically needed
@@ -276,7 +379,7 @@ const Attendance = () => {
       </div>
 
       <Tabs defaultValue="attendance" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="attendance" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Attendance
@@ -284,6 +387,10 @@ const Attendance = () => {
           <TabsTrigger value="leave" className="flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
             Leave Management
+          </TabsTrigger>
+          <TabsTrigger value="holidays" className="flex items-center gap-2">
+            <Star className="h-4 w-4" />
+            Holiday Calendar
           </TabsTrigger>
         </TabsList>
 
@@ -678,6 +785,230 @@ const Attendance = () => {
                     );
                   })
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="holidays" className="space-y-6">
+          {/* Holiday Management */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Holiday Calendar</CardTitle>
+                <Dialog open={isHolidayDialogOpen} onOpenChange={setIsHolidayDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Holiday
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Add Holiday</DialogTitle>
+                    </DialogHeader>
+                    <Form {...holidayForm}>
+                      <form onSubmit={holidayForm.handleSubmit(handleHolidaySubmit)} className="space-y-4">
+                        <FormField
+                          control={holidayForm.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Holiday Title</FormLabel>
+                              <FormControl>
+                                <Input placeholder="e.g., Christmas Day, Independence Day" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={holidayForm.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="date" 
+                                  {...field} 
+                                  value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                                  onChange={(e) => field.onChange(new Date(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={holidayForm.control}
+                          name="type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Holiday Type</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select holiday type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="company">Company Holiday</SelectItem>
+                                  <SelectItem value="national">National Holiday</SelectItem>
+                                  <SelectItem value="religious">Religious Holiday</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={holidayForm.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description (Optional)</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Additional details about the holiday..." 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={holidayForm.control}
+                          name="isRecurring"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                <FormLabel>Recurring Holiday</FormLabel>
+                                <div className="text-sm text-muted-foreground">
+                                  This holiday repeats every year
+                                </div>
+                              </div>
+                              <FormControl>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => setIsHolidayDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button type="submit">Add Holiday</Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Calendar View</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => date && setSelectedDate(date)}
+                      className="rounded-md border"
+                      modifiers={{
+                        holiday: holidays.map(holiday => new Date(holiday.date))
+                      }}
+                      modifiersStyles={{
+                        holiday: { backgroundColor: 'hsl(var(--primary))', color: 'white', fontWeight: 'bold' }
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-3">
+                  <CardHeader>
+                    <CardTitle>Holiday List</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {holidays.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-8">
+                          No holidays configured. Click "Add Holiday" to create company holidays.
+                        </p>
+                      ) : (
+                        holidays.map((holiday) => {
+                          const holidayDate = new Date(holiday.date);
+                          const today = new Date();
+                          const isUpcoming = holidayDate >= today;
+                          
+                          return (
+                            <div key={holiday.id} className="flex items-center justify-between p-4 border rounded-lg">
+                              <div className="flex items-center gap-4">
+                                <div>
+                                  <p className="font-medium">{holiday.title}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {holidayDate.toLocaleDateString('en-US', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}
+                                  </p>
+                                  {holiday.description && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {holiday.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-2 mt-2">
+                                    <Badge 
+                                      variant={
+                                        holiday.type === 'national' ? 'default' : 
+                                        holiday.type === 'religious' ? 'secondary' : 'outline'
+                                      }
+                                      className="text-xs"
+                                    >
+                                      {holiday.type.charAt(0).toUpperCase() + holiday.type.slice(1)}
+                                    </Badge>
+                                    {holiday.isRecurring && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Recurring
+                                      </Badge>
+                                    )}
+                                    {isUpcoming && (
+                                      <Badge variant="destructive" className="text-xs">
+                                        Upcoming
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleDeleteHoliday(holiday.id)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </CardContent>
           </Card>

@@ -53,3 +53,13 @@ export interface LeaveRequest {
   approvedAt?: string;
   createdAt: string;
 }
+
+export interface Holiday {
+  id: string;
+  title: string;
+  date: string;
+  description?: string;
+  type: 'company' | 'national' | 'religious';
+  isRecurring: boolean;
+  createdAt: string;
+}
