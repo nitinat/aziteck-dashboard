@@ -40,3 +40,16 @@ export interface WorkLog {
   priority: 'low' | 'medium' | 'high';
   status: 'in-progress' | 'completed' | 'on-hold';
 }
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  leaveType: 'Earned' | 'Casual' | 'Sick';
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approvedBy?: string;
+  approvedAt?: string;
+  createdAt: string;
+}
