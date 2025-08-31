@@ -32,7 +32,7 @@ export function AppSidebar() {
       <SidebarContent>
         <div className="p-6">
           <div className="flex items-center gap-3">
-            <img src="/lovable-uploads/50171f06-fa4a-4a30-b5f3-4a1d66dcbb4a.png" alt="Aziteck Team Logo" className="h-16 w-16" />
+            <img src="/lovable-uploads/50171f06-fa4a-4a30-b5f3-4a1d66dcbb4a.png" alt="Aziteck Team Logo" className="h-14 w-14" />
             <h2 className="text-lg font-semibold text-foreground">Aziteck Team</h2>
           </div>
         </div>
