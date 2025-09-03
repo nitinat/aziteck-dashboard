@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,8 +10,17 @@ import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState('signin');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const urlMode = searchParams.get('mode');
+    if (urlMode === 'reset') {
+      setMode('reset');
+    }
+  }, [searchParams]);
 
   const handleSignUp = async (email: string, password: string) => {
     setLoading(true);
@@ -70,6 +79,58 @@ const Auth = () => {
     }
   };
 
+  const handleForgotPassword = async (email: string) => {
+    setLoading(true);
+    try {
+      const redirectUrl = `${window.location.origin}/auth?mode=reset`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Reset link sent!",
+        description: "Please check your email for password reset instructions."
+      });
+    } catch (error: any) {
+      toast({
+        title: "Reset failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (password: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Password updated!",
+        description: "Your password has been successfully updated."
+      });
+      
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -78,31 +139,51 @@ const Auth = () => {
             Employee Management
           </CardTitle>
           <CardDescription className="text-center">
-            Sign in to your account or create a new one
+            {mode === 'reset' ? 'Reset your password' : 
+             mode === 'forgot' ? 'Reset your password' :
+             'Sign in to your account or create a new one'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
+          {mode === 'reset' ? (
+            <ResetPasswordForm onSubmit={handleResetPassword} loading={loading} />
+          ) : mode === 'forgot' ? (
+            <ForgotPasswordForm 
+              onSubmit={handleForgotPassword} 
+              loading={loading} 
+              onBack={() => setMode('signin')}
+            />
+          ) : (
+            <Tabs defaultValue="signin" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="signin">
-              <SignInForm onSubmit={handleSignIn} loading={loading} />
-            </TabsContent>
+              <TabsContent value="signin">
+                <SignInForm 
+                  onSubmit={handleSignIn} 
+                  loading={loading} 
+                  onForgotPassword={() => setMode('forgot')}
+                />
+              </TabsContent>
 
-            <TabsContent value="signup">
-              <SignUpForm onSubmit={handleSignUp} loading={loading} />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="signup">
+                <SignUpForm onSubmit={handleSignUp} loading={loading} />
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 };
 
-const SignInForm = ({ onSubmit, loading }: { onSubmit: (email: string, password: string) => void; loading: boolean }) => {
+const SignInForm = ({ onSubmit, loading, onForgotPassword }: { 
+  onSubmit: (email: string, password: string) => void; 
+  loading: boolean;
+  onForgotPassword: () => void;
+}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -138,6 +219,16 @@ const SignInForm = ({ onSubmit, loading }: { onSubmit: (email: string, password:
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Signing in...' : 'Sign In'}
       </Button>
+      <div className="text-center">
+        <Button
+          type="button"
+          variant="link"
+          onClick={onForgotPassword}
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
+          Forgot your password?
+        </Button>
+      </div>
     </form>
   );
 };
@@ -202,6 +293,104 @@ const SignUpForm = ({ onSubmit, loading }: { onSubmit: (email: string, password:
         disabled={loading || password !== confirmPassword}
       >
         {loading ? 'Creating account...' : 'Sign Up'}
+      </Button>
+    </form>
+  );
+};
+
+const ForgotPasswordForm = ({ onSubmit, loading, onBack }: { 
+  onSubmit: (email: string) => void; 
+  loading: boolean;
+  onBack: () => void;
+}) => {
+  const [email, setEmail] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(email);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="forgot-email">Email</Label>
+        <Input
+          id="forgot-email"
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? 'Sending...' : 'Send Reset Link'}
+      </Button>
+      <div className="text-center">
+        <Button
+          type="button"
+          variant="link"
+          onClick={onBack}
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
+          Back to Sign In
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+const ResetPasswordForm = ({ onSubmit, loading }: { 
+  onSubmit: (password: string) => void; 
+  loading: boolean;
+}) => {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      return;
+    }
+    
+    onSubmit(password);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="new-password">New Password</Label>
+        <Input
+          id="new-password"
+          type="password"
+          placeholder="Enter new password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+        <Input
+          id="confirm-new-password"
+          type="password"
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+        />
+        {password !== confirmPassword && confirmPassword && (
+          <p className="text-sm text-destructive">Passwords do not match</p>
+        )}
+      </div>
+      <Button 
+        type="submit" 
+        className="w-full" 
+        disabled={loading || password !== confirmPassword}
+      >
+        {loading ? 'Updating...' : 'Update Password'}
       </Button>
     </form>
   );
