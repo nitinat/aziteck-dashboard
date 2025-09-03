@@ -20,6 +20,14 @@ const Auth = () => {
     if (urlMode === 'reset') {
       setMode('reset');
     }
+    
+    // Handle password reset from email link
+    const hashFragment = window.location.hash;
+    if (hashFragment && hashFragment.includes('type=recovery')) {
+      setMode('reset');
+      // Clear the hash to clean up the URL
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
   }, [searchParams]);
 
   const handleSignUp = async (email: string, password: string) => {
