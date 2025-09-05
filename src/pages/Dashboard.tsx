@@ -25,10 +25,15 @@ const Dashboard = () => {
 
   const fetchEmployees = async () => {
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('user_id', user?.id);
+      // Admin can see all employees, others see only their own
+      const query = supabase.from('employees').select('*');
+      
+      // Check if user is admin (using the admin UUID from RLS policies)
+      const isAdmin = user?.id === '65ed3c65-d276-45fe-9688-6c43d6b91777';
+      
+      const { data, error } = isAdmin 
+        ? await query
+        : await query.eq('user_id', user?.id);
 
       if (error) {
         console.error('Error fetching employees:', error);
