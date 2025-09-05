@@ -190,7 +190,6 @@ const Attendance = () => {
       const { data, error } = await supabase
         .from('holidays')
         .select('*')
-        .eq('user_id', user?.id)
         .order('date', { ascending: true });
 
       if (error) {
