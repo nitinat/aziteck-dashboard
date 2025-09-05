@@ -58,7 +58,7 @@ const Projects = () => {
           file_paths,
           created_at,
           employee_id,
-          employees!inner(first_name, last_name)
+          employees(first_name, last_name)
         `)
         .order('created_at', { ascending: false });
 
