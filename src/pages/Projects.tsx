@@ -48,6 +48,9 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     try {
+      console.log('Current user:', user); // Debug log
+      console.log('User ID:', user?.id); // Debug log
+      
       const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -58,10 +61,14 @@ const Projects = () => {
           file_paths,
           created_at,
           employee_id,
+          user_id,
           employees(first_name, last_name)
         `)
         .order('created_at', { ascending: false });
 
+      console.log('Query error:', error); // Debug log
+      console.log('Query data:', data); // Debug log
+      
       if (error) throw error;
       console.log('Fetched projects:', data); // Debug log
       setProjects((data as any) || []);
