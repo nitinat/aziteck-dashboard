@@ -390,7 +390,7 @@ export type Database = {
       claim_employee_account: {
         Args: Record<PropertyKey, never>
         Returns: {
-          employee_id: string
+          claimed_employee_id: string
           updated_attendance: number
           updated_employees: number
           updated_leaves: number
