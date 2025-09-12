@@ -28,6 +28,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (event === 'PASSWORD_RECOVERY') {
           window.location.href = '/auth?mode=reset';
         }
+        
+        // Auto-claim employee account after successful login
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(async () => {
+            try {
+              await supabase.rpc('claim_employee_account');
+              console.log('Employee account claimed successfully');
+            } catch (error) {
+              console.log('No employee account to claim or already claimed:', error);
+            }
+          }, 0);
+        }
       }
     );
 
