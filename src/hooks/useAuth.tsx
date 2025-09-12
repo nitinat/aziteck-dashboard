@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             try {
               await supabase.rpc('claim_employee_account');
               console.log('Employee account claimed successfully');
+              // Force a reload so all queries pick up updated ownership
+              window.location.reload();
             } catch (error) {
               console.log('No employee account to claim or already claimed:', error);
             }
